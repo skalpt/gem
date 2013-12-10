@@ -1,6 +1,5 @@
 /* To do:
    =====
-* Add auto-power off
 * Move button into an interrupt so we can skip long screens
 * Add serial sync function
 * Add countdowns to important dates
@@ -36,7 +35,8 @@ unsigned char fill_string7[]="I | you. | Julz.";
 extern unsigned char myFont[][8];
 
 const int buttonPin = 2;
-const int oledPowerPin = 3;
+const int oledPowerPin = 12;
+const long timeout = 60000;
 
 int buttonState = HIGH;
 int curScreen = 0;
@@ -55,10 +55,20 @@ void setup() {
   
   i2c_init();
 
-  SleepNow();
+  //SleepNow();
 }
 
 void loop() {
+
+  if (curScreen == 0) {
+    digitalWrite(oledPowerPin, 1);
+    init_OLED();
+    delay(10);
+
+    AnniversaryPic();
+    curScreen = 1;
+    lastPoll = millis();
+  }
   
   int reading = digitalRead(buttonPin);
   
@@ -79,23 +89,27 @@ void loop() {
     
             AnniversaryPic();
             curScreen = 1;
+            lastPoll = millis();
             break;
           case 1:
             AnniversaryMsg();
             curScreen = 2;
+            lastPoll = millis();
             break;
           case 2:
-            curScreen = 0;
             readyToSleep = true;
             break;
         }
       }
       
       if (buttonState == HIGH && readyToSleep) {
-        readyToSleep = false;
         SleepNow();
       }
     }
+  }
+
+  if (millis() - lastPoll >= timeout) {
+    SleepNow();
   }
   
   lastButtonState = reading;
@@ -160,6 +174,9 @@ void AnniversaryMsg() {
 }
 
 void SleepNow() {
+
+  readyToSleep = false;
+  curScreen = 0;
 
   clear_display();
   delay(50);
